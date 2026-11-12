@@ -1,0 +1,162 @@
+name: Build Android APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      api_url:
+        description: 'API URL (e.g. https://api.example.com)'
+        required: true
+        default: 'https://api.example.com'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Create Android Project Structure
+        run: |
+          mkdir -p app/src/main/java/com/ng/crosshair app/src/main/res/layout app/src/main/res/drawable
+          
+          # AndroidManifest.xml
+          cat << 'EOF' > app/src/main/AndroidManifest.xml
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW"/>
+              <uses-permission android:name="android.permission.INTERNET"/>
+              <application
+                  android:allowBackup="true"
+                  android:icon="@mipmap/ic_launcher"
+                  android:label="NG Crosshair"
+                  android:roundIcon="@mipmap/ic_launcher_round"
+                  android:supportsRtl="true"
+                  android:theme="@style/Theme.AppCompat.Light.NoActionBar">
+                  <activity
+                      android:name=".MainActivity"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          # build.gradle
+          cat << 'EOF' > app/build.gradle
+          plugins {
+              id 'com.android.application'
+          }
+          android {
+              namespace 'com.ng.crosshair'
+              compileSdk 34
+              defaultConfig {
+                  applicationId "com.ng.crosshair"
+                  minSdk 24
+                  targetSdk 34
+                  versionCode 1
+                  versionName "1.0"
+              }
+              buildTypes {
+                  release {
+                      minifyEnabled false
+                  }
+              }
+              compileOptions {
+                  sourceCompatibility JavaVersion.VERSION_17
+                  targetCompatibility JavaVersion.VERSION_17
+              }
+          }
+          dependencies {
+              implementation 'androidx.appcompat:appcompat:1.6.1'
+              implementation 'com.google.android.material:material:1.9.0'
+              implementation 'androidx.constraintlayout:constraintlayout:2.1.4'
+              implementation 'com.squareup.okhttp3:okhttp:4.11.0'
+          }
+          EOF
+
+          # Root build.gradle
+          cat << 'EOF' > build.gradle
+          buildscript {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+              dependencies {
+                  classpath 'com.android.tools.build:gradle:8.1.2'
+              }
+          }
+          allprojects {
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          task clean(type: Delete) {
+              delete rootProject.buildDir
+          }
+          EOF
+
+          echo "gradle.version=8.1.2" > gradle.properties
+
+          # MainActivity.java
+          cat << 'EOF' > app/src/main/java/com/ng/crosshair/MainActivity.java
+          package com.ng.crosshair;
+
+          import android.content.Intent;
+          import android.net.Uri;
+          import android.os.Build;
+          import android.os.Bundle;
+          import android.provider.Settings;
+          import android.view.View;
+          import android.widget.Button;
+          import android.widget.EditText;
+          import android.widget.Toast;
+          import androidx.appcompat.app.AppCompatActivity;
+          import okhttp3.*;
+          import org.json.JSONObject;
+          import java.io.IOException;
+
+          public class MainActivity extends AppCompatActivity {
+              private static final int OVERLAY_PERMISSION_REQ_CODE = 1234;
+              private EditText usernameInput, passwordInput;
+              private Button loginBtn, toggleOverlayBtn;
+              private boolean isOverlayOn = false;
+              private OkHttpClient client = new OkHttpClient();
+              private String apiUrl = "${{ github.event.inputs.api_url }}";
+
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+                  
+                  // Simple UI Layout created programmatically for zero-file setup
+                  android.widget.LinearLayout layout = new android.widget.LinearLayout(this);
+                  layout.setOrientation(android.widget.LinearLayout.VERTICAL);
+                  layout.setPadding(50, 50, 50, 50);
+                  layout.setGravity(android.view.Gravity.CENTER);
+
+                  android.widget.TextView title = new android.widget.TextView(this);
+                  title.setText("NG Crosshair");
+                  title.setTextSize(24);
+                  title.setGravity(android.view.Gravity.CENTER);
+                  title.setPadding(0, 0, 0, 40);
+                  layout.addView(title);
+
+                  usernameInput = new EditText(this);
+                  usernameInput.setHint("Username");
+                  layout.addView(usernameInput);
+
+                  passwordInput = new EditText(this);
+                  passwordInput.setHint("Password");
+                  passwordInput.setInputType(android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);
+                  layout.addView(passwordInput);
+
+                  loginBtn =
+                  
